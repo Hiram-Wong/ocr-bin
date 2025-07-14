@@ -9,12 +9,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
-            target: win
+        #   - os: windows-latest
+        #     platform: win
           - os: macos-latest
-            target: mac
+            platform: mac
           - os: ubuntu-latest
-            target: linux
+            platform: linux
 
     steps:
       - uses: actions/checkout@v4
@@ -28,10 +28,10 @@ jobs:
         run: npm install
       
       - name: Build
-        run: npm run build:${{ matrix.target }}
+        run: npm run build:${{ matrix.platform }}
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-build
+          name: ${{ matrix.platform }}
           path: dist/*
