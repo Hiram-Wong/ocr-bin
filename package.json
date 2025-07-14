@@ -28,7 +28,7 @@
       "node_modules/@jimp/**/*",
       "node_modules/@tensorflow/tfjs-node/**/*",
       "node_modules/ddddocr-node/onnx/*",
-      "node_modules/onnxruntime-node/bin/napi-v3/*/*/onnxruntime.node"
+      "node_modules/onnxruntime-node/bin/napi-v3/**/*"
     ],
     "scripts": [],
     "patches": {},
