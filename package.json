@@ -8,6 +8,10 @@
     "build": "node scripts/build.js",
     "build:win:x64": "node scripts/build.js --platform win --arch x64",
     "build:win:arm64": "node scripts/build.js --platform win --arch arm64",
+    "build:mac:x64": "node scripts/build.js --platform macos --arch x64",
+    "build:mac:arm64": "node scripts/build.js --platform macos --arch arm64",
+    "build:linux:x64": "node scripts/build.js --platform linux --arch x64",
+    "build:linux:arm64": "node scripts/build.js --platform linux --arch arm64",
     "build:win": "node scripts/build.js --platform win",
     "build:mac": "node scripts/build.js --platform macos",
     "build:linux": "node scripts/build.js --platform linux"
