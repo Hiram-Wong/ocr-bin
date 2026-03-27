@@ -31,9 +31,9 @@ jobs:
     strategy:
       matrix:
         os: ${{ fromJSON(
-          github.event_name == 'push' && '["macos-latest", "windows-latest", "ubuntu-latest"]' ||
-          github.event_name == 'pull_request_target' && '["macos-latest", "windows-latest", "ubuntu-latest"]' ||
-          github.event.inputs.platform == 'all' && '["macos-latest", "windows-latest", "ubuntu-latest"]' ||
+          github.event_name == 'push' && '["macos-latest", "windows-latest", "windows-11-arm", "ubuntu-latest"]' ||
+          github.event_name == 'pull_request_target' && '["macos-latest", "windows-latest", "windows-11-arm", "ubuntu-latest"]' ||
+          github.event.inputs.platform == 'all' && '["macos-latest", "windows-latest", "windows-11-arm", "ubuntu-latest"]' ||
           github.event.inputs.platform == 'linux' && '["ubuntu-latest"]' ||
           github.event.inputs.platform == 'windows' && '["windows-latest", "windows-11-arm"]' ||
           github.event.inputs.platform == 'mac' && '["macos-latest"]' ||
