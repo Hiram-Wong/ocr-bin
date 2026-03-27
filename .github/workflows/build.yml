@@ -31,13 +31,13 @@ jobs:
     strategy:
       matrix:
         os: ${{ fromJSON(
-          github.event_name == 'push' && '["macos-latest", "windows-latest", "windows-11-arm", "ubuntu-latest"]' ||
-          github.event_name == 'pull_request_target' && '["macos-latest", "windows-latest", "windows-11-arm", "ubuntu-latest"]' ||
-          github.event.inputs.platform == 'all' && '["macos-latest", "windows-latest", "windows-11-arm", "ubuntu-latest"]' ||
-          github.event.inputs.platform == 'linux' && '["ubuntu-latest"]' ||
+          github.event_name == 'push' && '["macos-latest", "windows-latest", "windows-11-arm", "ubuntu-latest", "ubuntu-24.04-arm"]' ||
+          github.event_name == 'pull_request_target' && '["macos-latest", "windows-latest", "windows-11-arm", "ubuntu-latest", "ubuntu-24.04-arm"]' ||
+          github.event.inputs.platform == 'all' && '["macos-latest", "windows-latest", "windows-11-arm", "ubuntu-latest", "ubuntu-24.04-arm"]' ||
+          github.event.inputs.platform == 'linux' && '["ubuntu-latest", "ubuntu-24.04-arm"]' ||
           github.event.inputs.platform == 'windows' && '["windows-latest", "windows-11-arm"]' ||
           github.event.inputs.platform == 'mac' && '["macos-latest"]' ||
-          '["macos-latest", "windows-latest", "ubuntu-latest"]'
+          '["macos-latest", "windows-latest", "windows-11-arm", "ubuntu-latest", "ubuntu-24.04-arm"]'
           ) }}
       fail-fast: false
 
@@ -70,11 +70,19 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Build Linux
+      - name: Build Linux X64
         if: matrix.os == 'ubuntu-latest'
         run: |
           rm -rf ./node_modules/onnxruntime-node/bin/napi-v3/{darwin,win32}
-          npm run build:linux
+          rm -rf ./node_modules/onnxruntime-node/bin/napi-v3/linux/arm64
+          npm run build:linux:x64
+      
+      - name: Build Linux ARM64
+        if: matrix.os == 'ubuntu-24.04-arm'
+        run: |
+          rm -rf ./node_modules/onnxruntime-node/bin/napi-v3/{darwin,win32}
+          rm -rf ./node_modules/onnxruntime-node/bin/napi-v3/linux/x64
+          npm run build:linux:arm64
 
       - name: Build Mac
         if: matrix.os == 'macos-latest'
@@ -82,7 +90,7 @@ jobs:
           rm -rf ./node_modules/onnxruntime-node/bin/napi-v3/{linux,win32}
           npm run build:mac
 
-      - name: Build Windows x64
+      - name: Build Windows X64
         if: matrix.os == 'windows-latest'
         shell: bash
         run: |
@@ -90,7 +98,7 @@ jobs:
           rm -rf ./node_modules/onnxruntime-node/bin/napi-v3/win32/arm64
           npm run build:win:x64
 
-      - name: Build Windows arm64
+      - name: Build Windows ARM64
         if: matrix.os == 'windows-11-arm'
         shell: bash
         run: |
