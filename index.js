@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const { DdddOcr } = require('ddddocr-node');
 const path = require('path');
 const os = require('os');
@@ -23,6 +24,8 @@ const OCR_RANGE = getEnvNumber(process.env.OCR_RANGE, 6); // 0-7
 const OCR_CHARSET = OCR_RANGE === 7 ? (process.env.OCR_CHARSET || '0123456789+-x/=') : undefined; // 字符集
 
 const app = express();
+const upload = multer({ storage: multer.memoryStorage() });
+
 let ocrInstance = null;
 
 const isPkg = (process?.pkg?.entrypoint ?? '').includes('snapshot');
@@ -39,6 +42,43 @@ const ocrCharsetMap = {
 };
 const ocrCharset = (OCR_RANGE === 7 ? OCR_CHARSET : ocrCharsetMap[OCR_RANGE]) ?? 'unknown';
 
+const isHttpUrl = (str) => /^https?:\/\//i.test(str);
+const isImageMime = (str) => /^image\//i.test(str);
+
+const normalizeInput = async (data, file) => {
+  // 文件上传
+  if (file) {
+    if (!isImageMime(file.mimetype)) {
+      throw new Error('上传文件不是图片');
+    }
+
+    return `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+  }
+
+  // URL
+  if (isHttpUrl(data)) {
+    const res = await fetch(data, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) {
+      throw new Error('无法访问图片链接');
+    }
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!isImageMime(contentType)) {
+      throw new Error('链接资源不是图片');
+    }
+
+    const buffer = await res.arrayBuffer();
+    return `data:${contentType};base64,${Buffer.from(buffer).toString('base64')}`;
+  }
+
+  // base64（无前缀补全）
+  if (!data.includes('base64,')) {
+    return `data:image/png;base64,${data}`;
+  }
+
+  return data;
+}
+
 const initOcr = async () => {
     const ocrOnnxPath = path.join(__dirname, 'node_modules/ddddocr-node/onnx/');
     console.log(`[OCR] 配置 - 模型: ${OCR_MODE}, 范围: ${OCR_RANGE} (${ocrCharset}), 模型路径: ${ocrOnnxPath}`);
@@ -51,7 +91,6 @@ const initOcr = async () => {
     return ocr;
 }
 
-
 const bootstrap = async () => {
     try {
         ocrInstance = await initOcr();
@@ -61,42 +100,43 @@ const bootstrap = async () => {
 
         app.use(express.json({ limit: '10mb' })); // max 10MB
 
-        app.post('/ocr', async (req, res) => {
+        app.post('/ocr', upload.single('data'), async (req, res) => {
             try {
                 let { data } = req.body || {};
+                const file = req.file;
 
-                if (!data) {
-                    return res.status(400).json({ status: -1,  msg: '缺少 data 字段' });
+                if (!data && !file) {
+                    return res.status(400).json({ status: -1, msg: '缺少 data 或文件' });
                 }
 
-                if (!data.includes('base64,')) {
-                    data = `data:image/png;base64,${data}`
-                }
-                
-                const result = await ocrInstance.classification(data);
+                const input = await normalizeInput(data, file);
+                const result = await ocrInstance.classification(input);
                 console.debug('[OCR] 识别结果:', result);
                 
                 res.send({ status: 0, data: { code: result }, msg: 'success' });
             } catch (err) {
                 console.error('[OCR] 识别错误:', err);
                 res.status(500).send({ status: -1, msg: err.message || '识别失败' });
-            }
+            };
         });
 
         app.get('/health', (_req, res) => {
-            const version = pkg.version;
-            const timestamp = Date.now();
-            const charset = ocrCharset;
-
-            const data = { version, charset, timestamp };
-
-            res.send({ status: 0, data, msg: 'ok' });
+            res.send({
+                status: 0,
+                data: {
+                    version: pkg.version,
+                    charset: ocrCharset,
+                    timestamp: Date.now()
+                },
+                msg: 'ok'
+            });
         });
 
         app.listen(PORT, '0.0.0.0', () => {
             console.log(`[OCR] 请求地址: http://127.0.0.1:${PORT}/ocr`);
             console.log(`[OCR] 使用方式: POST`);
-            console.log(`[OCR] 请求载体: {"data": "图片base64数据"}`);
+            console.log(`[OCR] 请求方式一:\n      请求头: {"Content-Type": "application/json"}\n      请求体: {"data": "图片链接/图片base64字符串"}`);
+            console.log(`[OCR] 请求方式二:\n      请求头: {"Content-Type": "multipart/form-data"}\n      请求体: {"data": "图片文件"}`);
         });
     } catch (err) {
         console.error('[SYSTEM] 启动失败:', err);
