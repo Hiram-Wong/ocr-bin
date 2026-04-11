@@ -34,6 +34,12 @@ const toImageBase64 = async (data) => {
   return data;
 };
 
+const toNumber = (val, def) => {
+  const n = Number(val);
+  return Number.isFinite(n) ? n : def;
+};
+
 module.exports = {
   toImageBase64,
+  toNumber,
 };
