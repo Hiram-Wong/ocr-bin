@@ -143,7 +143,7 @@ curl 'http://127.0.0.1:7788/rotate' \
 
 ### 滑动
 
-```
+```bash
 # linux/mac
 # 传url和文件方法同OCR示例
 
