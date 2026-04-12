@@ -35,7 +35,8 @@ const bootstrap = async () => {
     if (!ocrCaptchaService.ocrInstance) {
       throw new Error("OCR实例初始化失败");
     }
-
+    
+    app.set("trust proxy", true);
     app.use(express.json({ limit: "10mb" })); // max 10MB
 
     const authMiddleware = (req, res, next) => {
