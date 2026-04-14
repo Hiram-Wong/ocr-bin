@@ -56,7 +56,7 @@ class RotateCaptchaService {
     return dst;
   }
 
-  matchScore = (bg, tpl) => {
+  matchScore(bg, tpl) {
     const result = new cv.Mat();
     cv.matchTemplate(bg, tpl, result, cv.TM_CCOEFF_NORMED);
 
@@ -64,67 +64,74 @@ class RotateCaptchaService {
     result.delete();
 
     return minMax.maxVal;
-  };
+  }
 
   async main(thumbBase64, bgBase64) {
-    const bg = await this.base64ToMat(bgBase64);
-    const thumb = await this.base64ToMat(thumbBase64);
+    const matsToDelete = [];
 
-    if (!bg || !thumb) {
-      if (bg) bg.delete();
-      if (thumb) thumb.delete();
+    try {
+      const bg = await this.base64ToMat(bgBase64);
+      matsToDelete.push(bg);
 
-      throw new Error("图像加载失败");
-    }
+      const thumb = await this.base64ToMat(thumbBase64);
+      matsToDelete.push(thumb);
 
-    // console.debug(
-    //   `[ROTATE] 输入图像尺寸: thumb-${thumb.cols}x${thumb.rows}, bg-${bg.cols}x${bg.rows}`,
-    // );
-
-    const grayBg = this.toGray(bg);
-    const grayThumb = this.toGray(thumb);
-
-    const h = thumb.rows;
-    const w = thumb.cols;
-
-    const y1 = Math.floor((bg.rows - h) / 2);
-    const x1 = Math.floor((bg.cols - w) / 2);
-
-    const roi = grayBg.roi(new cv.Rect(x1, y1, w, h));
-
-    let bestAngle = 0;
-    let maxScore = -1;
-
-    // 粗算
-    for (let angle = 0; angle < 360; angle += 5) {
-      const rotated = this.rotateMat(grayThumb, angle);
-      const score = this.matchScore(roi, rotated);
-
-      if (score > maxScore) {
-        maxScore = score;
-        bestAngle = angle;
+      if (!bg || !thumb) {
+        throw new Error("图像加载失败");
       }
 
-      rotated.delete();
-    }
+      const grayBg = this.toGray(bg);
+      matsToDelete.push(grayBg);
 
-    // 精算
-    for (let angle = bestAngle - 5; angle <= bestAngle + 5; angle++) {
-      const rotated = this.rotateMat(grayThumb, angle);
-      const score = this.matchScore(roi, rotated);
+      const grayThumb = this.toGray(thumb);
+      matsToDelete.push(grayThumb);
 
-      if (score > maxScore) {
-        maxScore = score;
-        bestAngle = angle;
+      const h = thumb.rows;
+      const w = thumb.cols;
+
+      const y1 = Math.floor((bg.rows - h) / 2);
+      const x1 = Math.floor((bg.cols - w) / 2);
+
+      const roi = grayBg.roi(new cv.Rect(x1, y1, w, h));
+      matsToDelete.push(roi);
+
+      let bestAngle = 0;
+      let maxScore = -1;
+
+      // 粗算
+      for (let angle = 0; angle < 360; angle += 5) {
+        const rotated = this.rotateMat(grayThumb, angle);
+        const score = this.matchScore(roi, rotated);
+
+        if (score > maxScore) {
+          maxScore = score;
+          bestAngle = angle;
+        }
+
+        rotated.delete();
       }
 
-      rotated.delete();
+      // 精算
+      for (let angle = bestAngle - 5; angle <= bestAngle + 5; angle++) {
+        const rotated = this.rotateMat(grayThumb, angle);
+        const score = this.matchScore(roi, rotated);
+
+        if (score > maxScore) {
+          maxScore = score;
+          bestAngle = angle;
+        }
+
+        rotated.delete();
+      }
+
+      return (bestAngle + 360) % 360;
+    } finally {
+      for (const m of matsToDelete) {
+        try {
+          if (m && !m.isDeleted()) m.delete();
+        } catch {}
+      }
     }
-
-    // 清理内存
-    [bg, thumb, grayBg, grayThumb, roi].forEach((m) => m?.delete?.());
-
-    return (bestAngle + 360) % 360;
   }
 }
 
