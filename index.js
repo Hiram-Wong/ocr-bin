@@ -3,6 +3,7 @@ const multer = require("multer");
 const os = require("os");
 
 const { toImageBase64, toNumber } = require("./utils/format");
+const { authMW } = require("./utils/auth");
 
 const { ocrCaptchaService, OcrCaptchaService } = require("./captcha/ocr");
 const { rotateCaptchaService } = require("./captcha/rotate");
@@ -19,7 +20,6 @@ process.on("unhandledRejection", (err) => {
 });
 
 const PORT = toNumber(process.env.PORT, 7788);
-const AUTH = process.env.AUTH || "";
 const OCR_MODE = toNumber(process.env.OCR_MODE, 0); // 0-1
 const OCR_RANGE = toNumber(process.env.OCR_RANGE, 7); // 0-7
 const OCR_CHARSET =
@@ -40,24 +40,9 @@ const bootstrap = async () => {
     app.set("trust proxy", true);
     app.use(express.json({ limit: "10mb" })); // max 10MB
 
-    const authMiddleware = (req, res, next) => {
-      if (!AUTH) return next();
-
-      const authHeader = req.headers.authorization;
-      const token = authHeader?.split(" ")?.[1];
-
-      if (token && token === AUTH) return next();
-
-      console.warn(`[AUTH] 拦截到非法请求: ${req.ip}`);
-      res.status(401).send({
-        status: -1,
-        msg: "认证失败",
-      });
-    };
-
     app.post(
       "/ocr",
-      authMiddleware,
+      authMW.middleware(),
       upload.single("data"),
       async (req, res) => {
         try {
@@ -73,7 +58,7 @@ const bootstrap = async () => {
             OcrCaptchaService.getInstance().init(
               mode ?? OCR_MODE,
               range ?? OCR_RANGE,
-              range == 7 ? charset || OCR_CHARSET : undefined,
+              range === 7 ? charset || OCR_CHARSET : undefined,
             );
             ins = OcrCaptchaService.getInstance().ocrInstance;
           }
@@ -99,7 +84,7 @@ const bootstrap = async () => {
 
     app.post(
       "/rotate",
-      authMiddleware,
+      authMW.middleware(),
       upload.fields([
         { name: "thumb", maxCount: 1 },
         { name: "bg", maxCount: 1 },
@@ -143,7 +128,7 @@ const bootstrap = async () => {
 
     app.post(
       "/slide",
-      authMiddleware,
+      authMW.middleware(),
       upload.fields([
         { name: "thumb", maxCount: 1 },
         { name: "bg", maxCount: 1 },
@@ -231,24 +216,31 @@ const bootstrap = async () => {
         `版本: ${pkg.version} | 系统: ${os.platform()} | 环境: ${isPkg ? "发行版" : "测试版"}`,
       );
       console.log(
-        `地址: http://127.0.0.1:${PORT} | 认证: ${AUTH ? `已启用(Bearer ${AUTH})` : "未启用"}`,
+        `地址: http://127.0.0.1:${PORT} | 认证: ${authMW.auth ? "已启用" : "未启用"}`,
       );
       console.log("=".repeat(60) + "\n");
 
       console.group("接口简述:");
       console.table([
         {
+          说明: "通用验证码",
           路径: "/ocr",
           方法: "POST",
-          说明: "通用验证码识别 (data, mode, range, charset)",
+          参数: "data(必传), mode: 0-1, range: 0-7, charset",
         },
-        { 路径: "/rotate", 方法: "POST", 说明: "旋转验证码识别 (thumb, bg)" },
         {
+          说明: "旋转验证码",
+          路径: "/rotate",
+          方法: "POST",
+          参数: "thumb(必传), bg(必传)",
+        },
+        {
+          说明: "滑动验证码",
           路径: "/slide",
           方法: "POST",
-          说明: "滑动验证码识别 (thumb, bg, type: match(边缘算法)/comparison(差异算法))",
+          参数: "thumb(必传), bg(必传), type: match/comparison",
         },
-        { 路径: "/health", 方法: "GET", 说明: "健康检查" },
+        { 说明: "健康检查", 路径: "/health", 方法: "GET", 参数: "无" },
       ]);
       console.groupEnd();
 

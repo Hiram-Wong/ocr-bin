@@ -1,7 +1,7 @@
 const { DdddOcr } = require("ddddocr-node");
 const path = require("path");
 
- class OcrCaptchaService {
+class OcrCaptchaService {
   OCR_CHARSET_MAP = {
     0: "0123456789",
     1: "abcdefghijklmnopqrstuvwxyz",
@@ -46,7 +46,9 @@ const path = require("path");
 
     ocr.setPath(ocrOnnxPath); // ONNX模型根路径
     ocr.setOcrMode(mode); // 模型 beta
-    ocr.setRanges(range === 7 ? (charset ? charset : this.OCR_CHARSET_MAP[range]) : range); // 范围 0-6 或 自定义字符集
+    ocr.setRanges(
+      range === 7 ? (charset ? charset : this.OCR_CHARSET_MAP[range]) : range,
+    ); // 范围 0-6 或 自定义字符集
 
     this.ocrInstance = ocr;
   }
@@ -57,7 +59,9 @@ const path = require("path");
     this.charset = range === 7 ? charset : undefined;
 
     this.ocrInstance.setOcrMode(mode);
-    this.ocrInstance.setRanges(range === 7 ? (charset ? charset : this.OCR_CHARSET_MAP[range]) : range);
+    this.ocrInstance.setRanges(
+      range === 7 ? (charset ? charset : this.OCR_CHARSET_MAP[range]) : range,
+    );
   }
 
   getRangeCharset() {
